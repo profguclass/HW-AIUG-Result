@@ -170,27 +170,73 @@ with col4:
                       xaxis_title="", margin=dict(t=10,b=10), height=320)
     st.plotly_chart(fig, use_container_width=True)
 
+# ── Detailed: scenario x model ───────────────────────────────────────────────
+st.subheader("Mean offer ratio by scenario, by AI model")
+sc_model = df.groupby(["scenario","model"])["offer_ratio"].mean().reset_index()
+SCENARIOS_ORDERED = ["AA","AH","HA","HH"]
+SCENARIO_LABELS   = {"AA":"AA (AI→AI)","AH":"AH (AI→Human)","HA":"HA (Human→AI)","HH":"HH (Human→Human)"}
+fig = go.Figure()
+for m in MODELS:
+    sub = sc_model[sc_model["model"]==m].set_index("scenario").reindex(SCENARIOS_ORDERED)
+    fig.add_trace(go.Bar(
+        name=m,
+        x=[SCENARIO_LABELS[s] for s in SCENARIOS_ORDERED],
+        y=sub["offer_ratio"].values,
+        marker_color=COLORS[m],
+        text=[f"{v:.1%}" for v in sub["offer_ratio"].values], textposition="outside"
+    ))
+fig.update_layout(barmode="group",
+                  yaxis=dict(tickformat=".0%", range=[0,0.7], title="Mean offer ratio"),
+                  xaxis_title="", legend_title="Model",
+                  margin=dict(t=10,b=10), height=360)
+st.plotly_chart(fig, use_container_width=True)
+
 # ── Behavioral mode stacked bar ───────────────────────────────────────────────
 st.subheader("Behavioral mode distribution by model")
 theorist_p = df.groupby("model")["theorist"].mean().reindex(MODELS)*100
-human_p = df.groupby("model")["human_mode"].mean().reindex(MODELS)*100
-alt_p   = df.groupby("model")["altruistic"].mean().reindex(MODELS)*100
+human_p    = df.groupby("model")["human_mode"].mean().reindex(MODELS)*100
+alt_p      = df.groupby("model")["altruistic"].mean().reindex(MODELS)*100
 
 fig = go.Figure()
-fig.add_trace(go.Bar(name="Theorist (<10%)",      y=MODELS, x=theorist_p.values, orientation="h",
+fig.add_trace(go.Bar(name="Theorist (<10%)",   y=MODELS, x=theorist_p.values, orientation="h",
                      marker_color="#E24B4A",
                      text=[f"{v:.1f}%" for v in theorist_p.values], textposition="inside"))
-fig.add_trace(go.Bar(name="Human (10–50%)",    y=MODELS, x=human_p.values, orientation="h",
+fig.add_trace(go.Bar(name="Human (10–50%)",    y=MODELS, x=human_p.values,    orientation="h",
                      marker_color="#1D9E75",
-                     text=[f"{v:.1f}%" for v in human_p.values], textposition="inside"))
-fig.add_trace(go.Bar(name="Altruistic (>50%)", y=MODELS, x=alt_p.values,   orientation="h",
+                     text=[f"{v:.1f}%" for v in human_p.values],    textposition="inside"))
+fig.add_trace(go.Bar(name="Altruistic (>50%)", y=MODELS, x=alt_p.values,      orientation="h",
                      marker_color="#EF9F27",
-                     text=[f"{v:.1f}%" for v in alt_p.values],  textposition="inside"))
+                     text=[f"{v:.1f}%" for v in alt_p.values],      textposition="inside"))
 fig.update_layout(barmode="stack",
                   xaxis=dict(ticksuffix="%", range=[0,100], title="Share of observations (%)"),
                   yaxis_title="", legend_title="Mode",
                   margin=dict(t=10,b=10), height=280)
 st.plotly_chart(fig, use_container_width=True)
+
+# ── Detailed: behavioral mode by scenario ────────────────────────────────────
+st.subheader("Behavioral mode distribution by model, by scenario")
+for sc in SCENARIOS_ORDERED:
+    st.markdown(f"**{SCENARIO_LABELS[sc]}**")
+    sub = df[df["scenario"]==sc]
+    t_p = sub.groupby("model")["theorist"].mean().reindex(MODELS)*100
+    h_p = sub.groupby("model")["human_mode"].mean().reindex(MODELS)*100
+    a_p = sub.groupby("model")["altruistic"].mean().reindex(MODELS)*100
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name="Theorist (<10%)",   y=MODELS, x=t_p.values, orientation="h",
+                         marker_color="#E24B4A",
+                         text=[f"{v:.1f}%" for v in t_p.values], textposition="inside"))
+    fig.add_trace(go.Bar(name="Human (10–50%)",    y=MODELS, x=h_p.values, orientation="h",
+                         marker_color="#1D9E75",
+                         text=[f"{v:.1f}%" for v in h_p.values], textposition="inside"))
+    fig.add_trace(go.Bar(name="Altruistic (>50%)", y=MODELS, x=a_p.values, orientation="h",
+                         marker_color="#EF9F27",
+                         text=[f"{v:.1f}%" for v in a_p.values], textposition="inside"))
+    fig.update_layout(barmode="stack",
+                      xaxis=dict(ticksuffix="%", range=[0,100], title="Share of observations (%)"),
+                      yaxis_title="", showlegend=False,
+                      margin=dict(t=5,b=5), height=220)
+    st.plotly_chart(fig, use_container_width=True)
+
 st.divider()
 
 # ── Statistical tests ─────────────────────────────────────────────────────────
