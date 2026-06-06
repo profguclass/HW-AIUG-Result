@@ -3,18 +3,11 @@ import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 from scipy import stats
-import io, base64, requests
+import urllib.request, io as _io
 
 st.set_page_config(page_title="AI Ultimatum Game — Class Results", layout="wide")
 st.title("How does AI distribute the pie?")
 st.caption("Class experiment · ChatGPT · Gemini · Copilot · Claude · 4 scenarios · 4 stake levels")
-
-# ── Hard-coded data (from class experiment) ───────────────────────────────────
-rows = []
-# Format: student_id, model, scenario, proposer_type, responder_type, stake, offer_ratio, mao_ratio
-# Reconstructed from the uploaded HW-AIUG-ed.xlsx
-
-import urllib.request, io as _io
 
 DATA_URL = "https://raw.githubusercontent.com/profguclass/HW-AIUG-Result-2026/main/HW-AIUG-ed.xlsx"
 
@@ -27,7 +20,6 @@ def load_data():
         return None
 
 df = load_data()
-
 if df is None:
     st.error("Could not load data from GitHub. Please check the repository.")
     st.stop()
@@ -35,12 +27,12 @@ if df is None:
 stake_order = {"1만원": 1, "10만원": 2, "100만원": 3, "1000만원": 4}
 df["stake_rank"] = df["stake"].map(stake_order)
 df["altruistic"] = df["offer_ratio"] > 0.5
-df["spock"]      = df["offer_ratio"] < 0.1
+df["theorist"]      = df["offer_ratio"] < 0.1
 df["human_mode"] = (df["offer_ratio"] >= 0.1) & (df["offer_ratio"] <= 0.5)
 
-MODELS  = ["ChatGPT", "Claude", "Copilot", "Gemini"]
-COLORS  = {"ChatGPT": "#378ADD", "Claude": "#1D9E75", "Copilot": "#D4537E", "Gemini": "#EF9F27"}
-STAKES  = ["1만원", "10만원", "100만원", "1000만원"]
+MODELS = ["ChatGPT", "Claude", "Copilot", "Gemini"]
+COLORS = {"ChatGPT": "#378ADD", "Claude": "#1D9E75", "Copilot": "#D4537E", "Gemini": "#EF9F27"}
+STAKES = ["1만원", "10만원", "100만원", "1000만원"]
 
 # ── Overview metrics ──────────────────────────────────────────────────────────
 st.subheader("Overview")
@@ -60,18 +52,19 @@ summary = df.groupby("model").agg(
     Mean_offer=("offer_ratio","mean"),
     SD_offer=("offer_ratio","std"),
     Mean_MAO=("mao_ratio","mean"),
+    SD_MAO=("mao_ratio","std"),
     Pct_altruistic=("altruistic","mean"),
-    Pct_spock=("spock","mean"),
+    Pct_theorist=("theorist","mean"),
     Pct_human=("human_mode","mean"),
 ).reindex(MODELS)
 summary["Offer_stake_r"] = pd.Series(corrs)
-pct_cols = ["Mean_offer","SD_offer","Mean_MAO","Pct_altruistic","Pct_spock","Pct_human"]
+pct_cols = ["Mean_offer","SD_offer","Mean_MAO","SD_MAO","Pct_altruistic","Pct_theorist","Pct_human"]
 disp = summary.copy()
 for c in pct_cols:
     disp[c] = disp[c].apply(lambda x: f"{x:.1%}")
 disp["Offer_stake_r"] = disp["Offer_stake_r"].apply(lambda x: f"{x:.3f}")
-disp.columns = ["N","Mean offer","SD offer","Mean MAO",
-                "% Altruistic (>50%)","% Spock (<10%)","% Human (10–50%)",
+disp.columns = ["N","Mean offer","SD offer","Mean MAO","SD MAO",
+                "% Altruistic (>50%)","% Theorist (<10%)","% Human (10–50%)",
                 "Offer–stake corr."]
 st.dataframe(disp, use_container_width=True)
 st.divider()
@@ -103,6 +96,28 @@ with col2:
                       xaxis_title="", margin=dict(t=30,b=10), height=300,
                       title="Mean minimum acceptable offer (MAO) by model")
     st.plotly_chart(fig, use_container_width=True)
+
+# ── SD comparison chart ───────────────────────────────────────────────────────
+st.subheader("Variability (SD) of offer ratio and MAO by model")
+sd_offer = df.groupby("model")["offer_ratio"].std().reindex(MODELS)
+sd_mao   = df.groupby("model")["mao_ratio"].std().reindex(MODELS)
+
+fig = go.Figure()
+fig.add_trace(go.Bar(
+    name="SD offer", x=MODELS, y=sd_offer.values,
+    marker_color=[COLORS[m] for m in MODELS],
+    text=[f"{v:.1%}" for v in sd_offer.values], textposition="outside"
+))
+fig.add_trace(go.Bar(
+    name="SD MAO", x=MODELS, y=sd_mao.values,
+    marker_color=[COLORS[m] for m in MODELS],
+    opacity=0.45,
+    text=[f"{v:.1%}" for v in sd_mao.values], textposition="outside"
+))
+fig.update_layout(barmode="group",
+                  yaxis=dict(tickformat=".0%", range=[0,0.35], title="Standard deviation"),
+                  xaxis_title="", legend_title="", margin=dict(t=10,b=10), height=320)
+st.plotly_chart(fig, use_container_width=True)
 
 # ── Offer by model x stake ────────────────────────────────────────────────────
 st.subheader("Mean offer ratio by model and stake level  (stake-dependent rationality)")
@@ -157,14 +172,14 @@ with col4:
 
 # ── Behavioral mode stacked bar ───────────────────────────────────────────────
 st.subheader("Behavioral mode distribution by model")
-spock_p = df.groupby("model")["spock"].mean().reindex(MODELS)*100
+theorist_p = df.groupby("model")["theorist"].mean().reindex(MODELS)*100
 human_p = df.groupby("model")["human_mode"].mean().reindex(MODELS)*100
 alt_p   = df.groupby("model")["altruistic"].mean().reindex(MODELS)*100
 
 fig = go.Figure()
-fig.add_trace(go.Bar(name="Spock (<10%)",      y=MODELS, x=spock_p.values, orientation="h",
+fig.add_trace(go.Bar(name="Theorist (<10%)",      y=MODELS, x=theorist_p.values, orientation="h",
                      marker_color="#E24B4A",
-                     text=[f"{v:.1f}%" for v in spock_p.values], textposition="inside"))
+                     text=[f"{v:.1f}%" for v in theorist_p.values], textposition="inside"))
 fig.add_trace(go.Bar(name="Human (10–50%)",    y=MODELS, x=human_p.values, orientation="h",
                      marker_color="#1D9E75",
                      text=[f"{v:.1f}%" for v in human_p.values], textposition="inside"))
