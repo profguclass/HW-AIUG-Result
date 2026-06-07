@@ -441,7 +441,7 @@ with tab1:
 """)
 
     st.markdown("**Coefficient plot — Proposer** *(error bars = 95% CI; bars crossing 0 are not significant)*")
-    selected_model_6 = st.selectbox("Select model", MODELS, key="reg6")
+    selected_model_6 = st.selectbox("Select model", MODELS, key="coefplot_proposer")
     res = res6[selected_model_6]
     vars_to_plot = [v for v in VAR_LABELS_FULL if v != "Intercept" and v in res.params]
     coefs = [res.params[v] for v in vars_to_plot]
@@ -489,8 +489,8 @@ with tab2:
 """)
 
     st.markdown("**Coefficient plot — Responder** *(error bars = 95% CI; bars crossing 0 are not significant)*")
-    selected_model_11 = st.selectbox("Select model", MODELS, key="reg11")
-    res = res11[selected_model_11]
+    sel_m11_tab1 = st.selectbox("Select model", MODELS, key="coefplot_responder_tab1")
+    res = res11[sel_m11_tab1]
     vars_to_plot = [v for v in VAR_LABELS_FULL if v != "Intercept" and v in res.params]
     coefs = [res.params[v] for v in vars_to_plot]
     ci_lo = [res.conf_int().loc[v, 0] for v in vars_to_plot]
@@ -499,11 +499,11 @@ with tab2:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=coefs, y=labels, mode="markers",
-        marker=dict(size=10, color=COLORS[selected_model_11]),
+        marker=dict(size=10, color=COLORS[sel_m11_tab1]),
         error_x=dict(type="data",
                      arrayminus=[c - l for c, l in zip(coefs, ci_lo)],
                      array=[h - c for c, h in zip(coefs, ci_hi)],
-                     color=COLORS[selected_model_11])
+                     color=COLORS[sel_m11_tab1])
     ))
     fig.add_vline(x=0, line_dash="dot", line_color="gray")
     fig.update_layout(xaxis_title="Coefficient", yaxis_title="",
@@ -606,7 +606,7 @@ with tab2:
 """)
 
     st.markdown("**Coefficient plot — Responder** *(error bars = 95% CI; bars crossing 0 are not significant)*")
-    selected_model_11 = st.selectbox("Select model", MODELS, key="reg11")
+    selected_model_11 = st.selectbox("Select model", MODELS, key="coefplot_responder_tab2")
     res = res11[selected_model_11]
     vars_to_plot = [v for v in VAR_LABELS_FULL if v != "Intercept" and v in res.params]
     coefs = [res.params[v] for v in vars_to_plot]
