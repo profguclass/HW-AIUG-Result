@@ -6,17 +6,14 @@ from scipy import stats
 import urllib.request, io as _io
 import statsmodels.formula.api as smf
 
-st.set_page_config(page_title="AI Ultimatum Game — Class Results", layout="wide")
+st.set_page_config(page_title="AI Ultimatum Game — Experiment Result", layout="wide")
 st.title("How does AI distribute the pie?")
-st.caption("Class experiment · ChatGPT · Gemini · Copilot · Claude · 4 scenarios · 4 stake levels")
+st.caption("경기대학교 경제학전공 '게임이론' 실험과제의 종합분석 (2026년 6월) · 4 AIs(ChatGPT,Gemini,Copilot,Claude) · 4 scenarios · 4 stake levels")
 
-st.info("""
-74명의 학생으로부터 수집된 7,616개의 관측값을 분석한 내용을 시각화하여 표현한 사이트이니 잘 살펴보기 바랍니다.
+st.info("""총 74명의 학생들이 수행한 7,616개의 실험관측값을 종합하여 분석한 결과, 네 가지 범용 AI모델은 평균적으로 37%를 제안(Offer)했고 최소수용제안(MAO)은 12%였다. 이는 내쉬균형의 예측(거의 0에 가까운 제안)보다 훨씬 높은 수치로서 전반적으로 AI모델들이 "인간"에 가깝게 행동한 것을 의미한다(Gemini만이 상대적으로 "내쉬균형"에 가까운 경향을 보였다).
+또한 인간응답자 효과(응답자가 AI가 아닌 인간일 때 제안비율이 증가하는 효과)가 나타났는데, 이는 AI모델들이 AI를 상대할 때 덜 관대한 조언을 한다는 선행연구의 결과를 재확인하고 있다. 그리고 선행연구에서처럼 금액크기(stake)에 따른 조정이 확인되었다. 네 모델 모두 금액이 ₩10,000에서 ₩10,000,000으로 증가할수록 제안비율을 낮추는 경향을 보였다. 
+끝으로 네 개의 AI모델의 평균 제안비율 간 차이는 통계적으로 무시할 수 없는 수준인데, 이는 어떤 AI모델을 사용하느냐가 파이를 얼마나 나눠주느냐에 실질적이고 유의미한 영향을 미친다는 것을 의미한다.""")
 
-이 네 가지 상용 AI 모델은 평균적으로 파이의 37%를 제안했는데, 이는 내쉬균형의 예측(거의 0에 가까운 제안)보다 훨씬 높은 수치로서 전반적으로 모델들이 "인간"에 가깝게 행동한 것으로 보이며, Gemini만이 상대적으로 "내쉬균형"에 가까운 경향을 보였습니다.
-
-또한 인간응답자 효과(응답자가 AI가 아닌 인간일 때 제안 비율이 증가하는 효과)가 나타났는데, 이는 AI를 상대할 때 모델들이 덜 관대한 조언을 한다는 선행연구의 결과를 재확인합니다.
-""")
 
 DATA_URL = "https://raw.githubusercontent.com/profguclass/HW-AIUG-Result-2026/main/HW-AIUG-ed.xlsx"
 
