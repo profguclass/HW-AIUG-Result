@@ -280,8 +280,8 @@ All specifications include:
 Standard errors are heteroskedasticity-robust (HC1). Significance: \\* p<0.05, \\*\\* p<0.01, \\*\\*\\* p<0.001.
 """)
 
-stake_map = {"1만원": 10, "10만원": 100, "100만원": 1000, "1000만원": 10000}
-df["Amt"]     = df["stake"].map(stake_map).apply(lambda x: np.log10(x) - 1)
+stake_map = {"1만원": 1, "10만원": 10, "100만원": 100, "1000만원": 1000}
+df["Amt"]     = df["stake"].map(stake_map).apply(lambda x: np.log10(x))
 df["P_Human"] = (df["proposer_type"] == "H").astype(int)
 df["R_Human"] = (df["responder_type"] == "H").astype(int)
 
@@ -341,7 +341,7 @@ COEF_EXPLAIN = """
 
 | Coefficient | What it measures | Positive value means… | Negative value means… |
 |---|---|---|---|
-| **Constant** | Baseline Y when both players are AI and stake = ₩10 (Amt = 0) | High baseline generosity / acceptance threshold | Low baseline — close to rational benchmark |
+| **Constant** | Baseline Y when both players are AI and stake = ₩1만원 (Amt = 0) | High baseline generosity / acceptance threshold | Low baseline — close to rational benchmark |
 | **Amt** | Change in Y for each 10× increase in stake | More generous / demanding at higher stakes | More rational (less generous / more accepting) at higher stakes |
 | **P Human** | Change in Y when the AI is *advising a human* vs. acting for itself | AI gives more generous advice to humans | AI gives more conservative advice to humans than it keeps for itself |
 | **R Human** | Change in Y when the Responder is human vs. AI | AI is more generous toward / demands more from humans | AI treats human and AI opponents similarly or favors AI |
@@ -432,12 +432,37 @@ def me_R(res, amt, p):
     return me, se, pv
 
 AMT_VALS   = [0, 1, 2, 3]
-AMT_LABELS = ["\u20a910", "\u20a9100", "\u20a91,000", "\u20a910,000"]
+AMT_LABELS = ["₩1만원", "₩10만원", "₩100만원", "₩1000만원"]
 
 def stars(p):
     return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
 
-def show_me_tables(res, dep="offer"):
+def show_me_tables(res_dict, selected, dep="offer"):
+    # If "All models", average the marginal effects across all models
+    # res_dict is the full {model: result} dict; selected is the chosen model or "All models"
+
+    def get_me_P(amt, r):
+        if selected == "All models":
+            mes = [me_P(res_dict[m], amt, r)[0] for m in MODELS]
+            ses = [me_P(res_dict[m], amt, r)[1] for m in MODELS]
+            me_avg = np.mean(mes)
+            se_avg = np.sqrt(np.mean([s**2 for s in ses]))  # pooled SE
+            pv = 2 * scipy_stats.t.sf(abs(me_avg / se_avg), df=min(res_dict[m].df_resid for m in MODELS))
+            return me_avg, se_avg, pv
+        else:
+            return me_P(res_dict[selected], amt, r)
+
+    def get_me_R(amt, p):
+        if selected == "All models":
+            mes = [me_R(res_dict[m], amt, p)[0] for m in MODELS]
+            ses = [me_R(res_dict[m], amt, p)[1] for m in MODELS]
+            me_avg = np.mean(mes)
+            se_avg = np.sqrt(np.mean([s**2 for s in ses]))
+            pv = 2 * scipy_stats.t.sf(abs(me_avg / se_avg), df=min(res_dict[m].df_resid for m in MODELS))
+            return me_avg, se_avg, pv
+        else:
+            return me_R(res_dict[selected], amt, p)
+
     # ── ME of P_Human ─────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("#### \U0001f522 Total marginal effect of P_Human")
@@ -451,7 +476,7 @@ The table below evaluates this total effect at each combination of stake level a
     rows = []
     for r_val, r_label in [(0, "AI Responder"), (1, "Human Responder")]:
         for amt, slabel in zip(AMT_VALS, AMT_LABELS):
-            me, se, pv = me_P(res, amt, r_val)
+            me, se, pv = get_me_P(amt, r_val)
             s = stars(pv)
             if dep == "offer":
                 interp = "More conservative advice to humans" if me < 0 else "More generous advice to humans"
@@ -476,7 +501,7 @@ The table below evaluates this total effect at each combination of stake level a
     rows2 = []
     for p_val, p_label in [(0, "AI Proposer"), (1, "Human Proposer")]:
         for amt, slabel in zip(AMT_VALS, AMT_LABELS):
-            me, se, pv = me_R(res, amt, p_val)
+            me, se, pv = get_me_R(amt, p_val)
             s = stars(pv)
             if dep == "offer":
                 interp = "More generous toward human responder" if me > 0 else "Less generous toward human responder"
@@ -504,7 +529,7 @@ with tab1:
     st.markdown("""
 | Coefficient | What it measures | Example interpretation |
 |---|---|---|
-| **Constant** | Baseline offer ratio when both players are AI and stake = \u20a910 (Amt = 0) | The AI\'s generosity in the pure AI-vs-AI baseline |
+| **Constant** | Baseline offer ratio when both players are AI and stake = ₩1만원 (Amt = 0) | The AI\'s generosity in the pure AI-vs-AI baseline |
 | **Amt** | Change per 10× increase in stake | Negative = more rational at higher stakes (*stake-dependent rationality*) |
 | **P Human** | Baseline change when Proposer is human (at Amt=0, R=AI) | Negative = AI gives more conservative advice to humans than it chooses for itself |
 | **R Human** | Baseline change when Responder is human (at Amt=0, P=AI) | Positive = AI offers more generously toward humans (*human responder effect*) |
@@ -518,7 +543,7 @@ with tab1:
 - **Amt < 0** (significant): AI is more rational at higher stakes \u2713
 - **R Human > 0** (significant): AI is more generous toward human responders \u2713
 - **P Human < 0** (significant): AI gives more conservative advice to humans than it acts for itself
-\n\u26a0\ufe0f The coefficient on P_Human alone is only the effect *at \u20a910 with an AI responder*. See the marginal effects tables below for the full picture.
+\n\u26a0\ufe0f The coefficient on P_Human alone is only the effect *at ₩1만원 with an AI responder*. See the marginal effects tables below for the full picture.
 """)
 
     st.markdown("**Coefficient plot** *(error bars = 95% CI; bars crossing 0 are not significant)*")
@@ -546,8 +571,8 @@ with tab1:
     st.markdown("---")
     st.markdown("#### \U0001f4ca Marginal effects (accounting for all interaction terms)")
     st.markdown("Select a model to see the **total** effect of each player-type variable across all stake levels and opponent types.")
-    sel6_me = st.selectbox("Select model for marginal effects", MODELS, key="me6")
-    show_me_tables(res6[sel6_me], dep="offer")
+    sel6_me = st.selectbox("Select model for marginal effects", ["All models"] + MODELS, key="me6")
+    show_me_tables(res6, sel6_me, dep="offer")
 
 # ── TAB 2: Responder ──────────────────────────────────────────────────────────
 with tab2:
@@ -560,7 +585,7 @@ with tab2:
     st.markdown("""
 | Coefficient | What it measures | Example interpretation |
 |---|---|---|
-| **Constant** | Baseline MAO when both players are AI and stake = \u20a910 (Amt = 0) | How demanding the AI is in the pure AI-vs-AI baseline |
+| **Constant** | Baseline MAO when both players are AI and stake = ₩1만원 (Amt = 0) | How demanding the AI is in the pure AI-vs-AI baseline |
 | **Amt** | Change per 10\u00d7 increase in stake | Negative = accepts smaller shares at higher stakes — more rational |
 | **P Human** | Baseline change in MAO when Proposer is human (at Amt=0, R=AI) | Does the model demand more or less from a human proposer? |
 | **R Human** | Baseline change in MAO when Responder is human (at Amt=0, P=AI) | Positive = AI tells humans to demand a higher minimum |
@@ -574,7 +599,7 @@ with tab2:
 - **Amt < 0** (significant): AI accepts lower shares at higher stakes \u2713
 - **R Human > 0** (significant): AI tells humans to demand more — stricter fairness norms when advising \u2713
 - **Constant near 0**: close to the rational benchmark as a responder in the AI-vs-AI baseline
-\n\u26a0\ufe0f The coefficient on P_Human alone is only the effect *at \u20a910 with an AI responder*. See the marginal effects tables below for the full picture.
+\n\u26a0\ufe0f The coefficient on P_Human alone is only the effect *at ₩1만원 with an AI responder*. See the marginal effects tables below for the full picture.
 """)
 
     st.markdown("**Coefficient plot** *(error bars = 95% CI; bars crossing 0 are not significant)*")
@@ -602,5 +627,5 @@ with tab2:
     st.markdown("---")
     st.markdown("#### \U0001f4ca Marginal effects (accounting for all interaction terms)")
     st.markdown("Select a model to see the **total** effect of each player-type variable across all stake levels and opponent types.")
-    sel11_me = st.selectbox("Select model for marginal effects", MODELS, key="me11")
-    show_me_tables(res11[sel11_me], dep="mao")
+    sel11_me = st.selectbox("Select model for marginal effects", ["All models"] + MODELS, key="me11")
+    show_me_tables(res11, sel11_me, dep="mao")
