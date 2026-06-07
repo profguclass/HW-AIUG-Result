@@ -273,7 +273,7 @@ st.header("Regression Analysis")
 st.markdown("""
 Inspired by Araujo & Uhlig (2026), we run OLS regressions for each AI model.
 All specifications include:
-- **Amt** = log₁₀(stake in KRW) − 1
+- **Amt** = log₁₀(stake in KRW)
 - **P_Human** = 1 if Proposer is human, 0 if AI
 - **R_Human** = 1 if Responder is human, 0 if AI
 
