@@ -362,7 +362,7 @@ with tab1:
     st.markdown("""
 | Coefficient | What it measures | Example interpretation |
 |---|---|---|
-| **Constant** | Baseline offer ratio when both players are AI and stake is ₩10 (Amt = 0) | ChatGPT starts at 48.5% in the AI-vs-AI baseline |
+| **Constant** | Baseline offer ratio when both players are AI and stake is ₩10,000 (Amt = 0) | ChatGPT starts at 48.5% in the AI-vs-AI baseline |
 | **Amt** | How offer ratio changes as stake increases (each unit = 10× increase in stake) | A negative value means the model offers less as stakes rise — *stake-dependent rationality* |
 | **P Human** | Change in offer ratio when the Proposer is a *human asking for advice* (vs. AI deciding for itself) | A negative value means the model gives more conservative advice to humans than it would choose for itself |
 | **R Human** | Change in offer ratio when the Responder is human (vs. AI) | A positive value means the model offers more generously when facing a human — the *human responder effect* |
