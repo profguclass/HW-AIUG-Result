@@ -239,7 +239,7 @@ for sc in SCENARIOS_ORDERED:
                       xaxis=dict(ticksuffix="%", range=[0,100], title="Share of observations (%)"),
                       yaxis_title="", showlegend=False,
                       margin=dict(t=5,b=5), height=220)
-    st.plotly_chart(fig, use_container_width=True, key="chart_behavioral_by_scenario")
+    st.plotly_chart(fig, use_container_width=True, key=f"chart_behavioral_by_scenario_{sc}")
 
 st.divider()
 
